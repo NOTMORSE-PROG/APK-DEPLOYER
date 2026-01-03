@@ -28,6 +28,30 @@
             <div id="active-builds-list"></div>
         </div>
 
+        <div id="filters-container" class="filters-container" style="display: none;">
+            <div class="filters-header">
+                <h3>Filter Releases</h3>
+                <button id="clear-filters" class="clear-filters-btn">Clear Filters</button>
+            </div>
+            <div class="filters-content">
+                <div class="filter-group">
+                    <label>Branch:</label>
+                    <select id="branch-filter">
+                        <option value="all">All Branches</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Sort by:</label>
+                    <select id="sort-filter">
+                        <option value="date-desc">Newest First</option>
+                        <option value="date-asc">Oldest First</option>
+                        <option value="name-asc">Name A-Z</option>
+                        <option value="name-desc">Name Z-A</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <div id="releases-container" class="releases-container"></div>
     </div>
 

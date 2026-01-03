@@ -5,6 +5,13 @@ const API_URL = window.location.origin;
 const POLL_INTERVAL = 30000; // 30 seconds
 let pollTimer = null;
 
+// Global state
+let allReleases = [];
+let currentFilters = {
+    branch: 'all',
+    sort: 'date-desc'
+};
+
 // Load app configuration
 async function loadConfig() {
     try {
@@ -50,15 +57,20 @@ function createActiveBuildCard(build) {
     const elapsedMin = Math.floor(elapsed / 60);
     const elapsedSec = elapsed % 60;
 
+    // Estimate build time: 6 minutes typical
+    const estimatedBuildTime = 6 * 60; // 360 seconds
+    const progress = Math.min(95, Math.floor((elapsed / estimatedBuildTime) * 100));
+
     return `
         <div class="active-build-card">
             <div class="build-progress-bar">
-                <div class="build-progress-fill"></div>
+                <div class="build-progress-fill" style="width: ${progress}%"></div>
             </div>
             <div class="build-info">
                 <div class="build-branch">
                     <span class="build-status-icon">⚙️</span>
                     Building: <strong>${build.branch}</strong>
+                    <span class="build-progress-text">${progress}%</span>
                 </div>
                 <div class="build-details">
                     <p>${build.commitMessage}</p>
@@ -104,14 +116,14 @@ async function loadReleases() {
 
         if (data.releases.length === 0) {
             containerEl.innerHTML = '<div class="no-releases">No APK releases found</div>';
+            document.getElementById('filters-container').style.display = 'none';
             return;
         }
 
-        // Render releases
-        data.releases.forEach(release => {
-            const card = createReleaseCard(release);
-            containerEl.appendChild(card);
-        });
+        // Store releases and populate filters
+        allReleases = data.releases;
+        populateFilters();
+        renderReleases();
 
     } catch (error) {
         loadingEl.style.display = 'none';
@@ -119,6 +131,72 @@ async function loadReleases() {
         document.getElementById('error-message').textContent =
             `Error: ${error.message}`;
     }
+}
+
+// Populate filter dropdowns
+function populateFilters() {
+    const branchFilter = document.getElementById('branch-filter');
+    const uniqueBranches = [...new Set(allReleases.map(r => r.branch))].sort();
+
+    // Clear existing options except "All"
+    branchFilter.innerHTML = '<option value="all">All Branches</option>';
+
+    // Add branch options
+    uniqueBranches.forEach(branch => {
+        const option = document.createElement('option');
+        option.value = branch;
+        option.textContent = branch;
+        branchFilter.appendChild(option);
+    });
+
+    // Show filters if we have releases
+    document.getElementById('filters-container').style.display = 'block';
+}
+
+// Filter and sort releases
+function getFilteredReleases() {
+    let filtered = [...allReleases];
+
+    // Apply branch filter
+    if (currentFilters.branch !== 'all') {
+        filtered = filtered.filter(r => r.branch === currentFilters.branch);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+        switch (currentFilters.sort) {
+            case 'date-desc':
+                return new Date(b.publishedAt) - new Date(a.publishedAt);
+            case 'date-asc':
+                return new Date(a.publishedAt) - new Date(b.publishedAt);
+            case 'name-asc':
+                return a.name.localeCompare(b.name);
+            case 'name-desc':
+                return b.name.localeCompare(a.name);
+            default:
+                return 0;
+        }
+    });
+
+    return filtered;
+}
+
+// Render releases based on current filters
+function renderReleases() {
+    const containerEl = document.getElementById('releases-container');
+    const filtered = getFilteredReleases();
+
+    containerEl.innerHTML = '';
+
+    if (filtered.length === 0) {
+        containerEl.innerHTML = '<div class="no-releases">No releases match your filters</div>';
+        return;
+    }
+
+    filtered.forEach(release => {
+        const card = createReleaseCard(release);
+        containerEl.appendChild(card);
+    });
 }
 
 // Create a release card element
@@ -191,4 +269,26 @@ document.addEventListener('DOMContentLoaded', () => {
     loadConfig();
     loadActiveBuilds();
     loadReleases();
+
+    // Setup filter event listeners
+    const branchFilter = document.getElementById('branch-filter');
+    const sortFilter = document.getElementById('sort-filter');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+
+    branchFilter.addEventListener('change', (e) => {
+        currentFilters.branch = e.target.value;
+        renderReleases();
+    });
+
+    sortFilter.addEventListener('change', (e) => {
+        currentFilters.sort = e.target.value;
+        renderReleases();
+    });
+
+    clearFiltersBtn.addEventListener('click', () => {
+        currentFilters = { branch: 'all', sort: 'date-desc' };
+        branchFilter.value = 'all';
+        sortFilter.value = 'date-desc';
+        renderReleases();
+    });
 });
