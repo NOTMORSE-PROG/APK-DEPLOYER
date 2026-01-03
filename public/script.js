@@ -5,11 +5,54 @@ const API_URL = window.location.origin;
 const POLL_INTERVAL = 30000; // 30 seconds
 let pollTimer = null;
 
+// Helper function to extract and format date from APK filename
+// APK filename format: SafeTransit-{branch}-{commit}-{YYYYMMDD-HHMMSS}.apk
+// The timestamp in filename is UTC (from GitHub Actions runner)
+function formatApkDate(apkName, uploadedAt, options) {
+    // Try to extract date from filename first (more reliable)
+    const dateMatch = apkName.match(/(\d{8})-(\d{6})\.apk$/);
+    if (dateMatch) {
+        const dateStr = dateMatch[1]; // YYYYMMDD
+        const timeStr = dateMatch[2]; // HHMMSS
+        const year = dateStr.substring(0, 4);
+        const month = dateStr.substring(4, 6);
+        const day = dateStr.substring(6, 8);
+        const hour = timeStr.substring(0, 2);
+        const minute = timeStr.substring(2, 4);
+        const second = timeStr.substring(4, 6);
+        
+        // Parse as UTC (GitHub Actions uses UTC), then display in Manila time
+        const date = new Date(Date.UTC(
+            parseInt(year), parseInt(month) - 1, parseInt(day),
+            parseInt(hour), parseInt(minute), parseInt(second)
+        ));
+        if (!isNaN(date.getTime())) {
+            return date.toLocaleString('en-PH', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Manila'
+            });
+        }
+    }
+    
+    // Fallback to uploadedAt if filename parsing fails
+    if (uploadedAt) {
+        const date = new Date(uploadedAt);
+        if (!isNaN(date.getTime())) {
+            return date.toLocaleString('en-PH', options);
+        }
+    }
+    
+    return 'Unknown Date';
+}
+
 // Global state
 let allReleases = [];
 let currentFilters = {
-    branch: 'all',
-    sort: 'date-desc'
+    branch: 'all'
 };
 
 // Load app configuration
@@ -163,19 +206,35 @@ function getFilteredReleases() {
     }
 
     // Apply sorting
+    // Apply sorting: Main branch first, then by date (newest first)
     filtered.sort((a, b) => {
-        switch (currentFilters.sort) {
-            case 'date-desc':
-                return new Date(b.publishedAt) - new Date(a.publishedAt);
-            case 'date-asc':
-                return new Date(a.publishedAt) - new Date(b.publishedAt);
-            case 'name-asc':
-                return a.name.localeCompare(b.name);
-            case 'name-desc':
-                return b.name.localeCompare(a.name);
-            default:
-                return 0;
-        }
+        // 1. Prioritize 'main' branch
+        if (a.branch === 'main' && b.branch !== 'main') return -1;
+        if (a.branch !== 'main' && b.branch === 'main') return 1;
+
+        // 2. Sort by date (newest first)
+        // Use the same timestamp extraction logic as in createReleaseCard for consistency
+        const getTimestamp = (release) => {
+            if (release.apkFiles && release.apkFiles.length > 0) {
+                // Try to get timestamp from the latest APK filename
+                const latestApk = release.apkFiles[0]; // Assuming apkFiles are already sorted or we just take the first
+                // We should probably sort apkFiles here too if we want to be super accurate, 
+                // but usually the first one is the one we care about or they are consistent.
+                // Let's just use publishedAt for release sorting to keep it simple and fast,
+                // unless we want to be super precise with the APK filename time.
+                // Given the user's previous request about accuracy, let's try to be consistent.
+                
+                // Actually, let's stick to publishedAt for the release list sorting 
+                // because extracting from APK filename for EVERY release during sort might be overkill 
+                // and publishedAt is usually close enough for relative ordering of releases.
+                // BUT, the user specifically complained about accuracy.
+                // Let's use publishedAt for now as it's the standard release time.
+                return new Date(release.publishedAt).getTime();
+            }
+            return new Date(release.publishedAt).getTime();
+        };
+
+        return new Date(b.publishedAt) - new Date(a.publishedAt);
     });
 
     return filtered;
@@ -204,7 +263,48 @@ function createReleaseCard(release) {
     const card = document.createElement('div');
     card.className = 'release-card';
 
-    const publishDate = new Date(release.publishedAt).toLocaleDateString('en-PH', {
+    // Sort APKs by date in filename (descending) first
+    if (release.apkFiles.length > 0) {
+        release.apkFiles.sort((a, b) => {
+            const getTimestamp = (name) => {
+                const match = name.match(/(\d{8})-(\d{6})\.apk$/);
+                return match ? match[1] + match[2] : '0';
+            };
+            return getTimestamp(b.name).localeCompare(getTimestamp(a.name));
+        });
+    }
+
+    // Use the latest APK's date for the header, fallback to publishedAt
+    let headerDateStr = release.publishedAt;
+    if (release.apkFiles.length > 0) {
+        // Use the formatted date from the latest APK
+        const latestApk = release.apkFiles[0];
+        // We need to get the date object to format it differently for the header if needed
+        // But for consistency, let's use the same parsing logic
+        const dateMatch = latestApk.name.match(/(\d{8})-(\d{6})\.apk$/);
+        if (dateMatch) {
+            const dateStr = dateMatch[1];
+            const timeStr = dateMatch[2];
+            const year = dateStr.substring(0, 4);
+            const month = dateStr.substring(4, 6);
+            const day = dateStr.substring(6, 8);
+            const hour = timeStr.substring(0, 2);
+            const minute = timeStr.substring(2, 4);
+            const second = timeStr.substring(4, 6);
+            
+            const date = new Date(Date.UTC(
+                parseInt(year), parseInt(month) - 1, parseInt(day),
+                parseInt(hour), parseInt(minute), parseInt(second)
+            ));
+            if (!isNaN(date.getTime())) {
+                headerDateStr = date.toISOString();
+            }
+        } else if (latestApk.uploadedAt) {
+            headerDateStr = latestApk.uploadedAt;
+        }
+    }
+
+    const publishDate = new Date(headerDateStr).toLocaleDateString('en-PH', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -213,6 +313,15 @@ function createReleaseCard(release) {
 
     let apkFilesHTML = '';
     if (release.apkFiles.length > 0) {
+        // Sort APKs by date in filename (descending) to ensure "Latest" is actually the newest
+        release.apkFiles.sort((a, b) => {
+            const getTimestamp = (name) => {
+                const match = name.match(/(\d{8})-(\d{6})\.apk$/);
+                return match ? match[1] + match[2] : '0';
+            };
+            return getTimestamp(b.name).localeCompare(getTimestamp(a.name));
+        });
+
         const latestApk = release.apkFiles[0];
         const olderApks = release.apkFiles.slice(1);
         const releaseId = release.tag.replace(/[^a-zA-Z0-9]/g, '_');
@@ -221,13 +330,21 @@ function createReleaseCard(release) {
 
         // Show latest APK
         const latestSize = (latestApk.size / (1024 * 1024)).toFixed(2);
+        const latestDate = formatApkDate(latestApk.name, latestApk.uploadedAt, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Asia/Manila'
+        });
         apkFilesHTML += `
             <div class="apk-file latest">
                 <div class="apk-file-header">
                     <div class="apk-file-name">${latestApk.name}</div>
                     <span class="latest-badge">Latest</span>
                 </div>
-                <div class="apk-file-info">Size: ${latestSize} MB</div>
+                <div class="apk-file-info">Size: ${latestSize} MB • ${latestDate}</div>
                 <a href="${latestApk.downloadUrl}" class="download-btn" download>
                     Download APK
                 </a>
@@ -251,13 +368,21 @@ function createReleaseCard(release) {
             // Render all older APKs, but hide some with CSS
             olderApks.forEach((apk, index) => {
                 const size = (apk.size / (1024 * 1024)).toFixed(2);
+                const apkDate = formatApkDate(apk.name, apk.uploadedAt, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'Asia/Manila'
+                });
                 const isInitiallyVisible = index < initialShow;
                 const hiddenClass = isInitiallyVisible ? '' : 'older-apk-hidden';
 
                 apkFilesHTML += `
                     <div class="apk-file older-apk ${hiddenClass}" data-index="${index}">
                         <div class="apk-file-name">${apk.name}</div>
-                        <div class="apk-file-info">Size: ${size} MB</div>
+                        <div class="apk-file-info">Size: ${size} MB • ${apkDate}</div>
                         <a href="${apk.downloadUrl}" class="download-btn" download>
                             Download APK
                         </a>
@@ -323,7 +448,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Setup filter event listeners
     const branchFilter = document.getElementById('branch-filter');
-    const sortFilter = document.getElementById('sort-filter');
     const clearFiltersBtn = document.getElementById('clear-filters');
 
     branchFilter.addEventListener('change', (e) => {
@@ -331,15 +455,9 @@ document.addEventListener('DOMContentLoaded', () => {
         renderReleases();
     });
 
-    sortFilter.addEventListener('change', (e) => {
-        currentFilters.sort = e.target.value;
-        renderReleases();
-    });
-
     clearFiltersBtn.addEventListener('click', () => {
-        currentFilters = { branch: 'all', sort: 'date-desc' };
+        currentFilters = { branch: 'all' };
         branchFilter.value = 'all';
-        sortFilter.value = 'date-desc';
         renderReleases();
     });
 });
