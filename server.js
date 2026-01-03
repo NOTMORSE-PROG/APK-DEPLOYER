@@ -78,7 +78,8 @@ app.get('/api/releases', async (req, res) => {
           name: asset.name,
           size: asset.size,
           downloadUrl: asset.browser_download_url,
-          downloadCount: asset.download_count
+          downloadCount: asset.download_count,
+          uploadedAt: asset.created_at
         }))
       };
     });
