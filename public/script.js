@@ -345,7 +345,7 @@ function createReleaseCard(release) {
                     <span class="latest-badge">Latest</span>
                 </div>
                 <div class="apk-file-info">Size: ${latestSize} MB • ${latestDate}</div>
-                <a href="${latestApk.downloadUrl}" class="download-btn" download>
+                <a href="${latestApk.downloadUrl}" class="download-btn" target="_blank" rel="noopener noreferrer">
                     Download APK
                 </a>
             </div>
@@ -383,7 +383,7 @@ function createReleaseCard(release) {
                     <div class="apk-file older-apk ${hiddenClass}" data-index="${index}">
                         <div class="apk-file-name">${apk.name}</div>
                         <div class="apk-file-info">Size: ${size} MB • ${apkDate}</div>
-                        <a href="${apk.downloadUrl}" class="download-btn" download>
+                        <a href="${apk.downloadUrl}" class="download-btn" target="_blank" rel="noopener noreferrer">
                             Download APK
                         </a>
                     </div>
