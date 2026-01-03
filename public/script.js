@@ -57,8 +57,8 @@ function createActiveBuildCard(build) {
     const elapsedMin = Math.floor(elapsed / 60);
     const elapsedSec = elapsed % 60;
 
-    // Estimate build time: 6 minutes typical
-    const estimatedBuildTime = 6 * 60; // 360 seconds
+    // Estimate build time: 12 minutes typical
+    const estimatedBuildTime = 12 * 60; // 720 seconds
     const progress = Math.min(95, Math.floor((elapsed / estimatedBuildTime) * 100));
 
     return `
