@@ -1,0 +1,15 @@
+{
+  "github": {
+    "owner": "NOTMORSE-PROG",
+    "repo": "SafeTransit",
+    "token": ""
+  },
+  "app": {
+    "name": "SafeTransit",
+    "description": "Download the latest SafeTransit APK builds",
+    "tagPattern": "apk-"
+  },
+  "server": {
+    "port": 3000
+  }
+}
