@@ -39,11 +39,6 @@ Website shows them all with download buttons.
 - Optimized release builds
 - **Triggers on push to ANY branch**
 
-**Development APKs:** `.github/workflows/build-dev-apk.yml`
-- Debug builds with hot reload
-- Triggers on push to develop, dev/**
-- Manual trigger available
-
 ## Configuration
 
 Edit `config.json` to point to your GitHub repo:
@@ -109,9 +104,6 @@ Go to: `https://github.com/[owner]/[repo]/settings/actions`
 
 Enable:
 - ✅ "Read and write permissions"
-
-You DON'T need:
-- ❌ "Allow GitHub Actions to create and approve pull requests"
 
 ## File Structure
 
