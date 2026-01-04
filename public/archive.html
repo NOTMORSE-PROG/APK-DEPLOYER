@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APK Downloader</title>
+    <title>All Versions - APK Downloader</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,25 +12,20 @@
             <div class="header-with-nav">
                 <div>
                     <h1 id="app-name">APK Downloader</h1>
-                    <p id="app-description">Download the latest builds</p>
+                    <p id="app-description">All available versions</p>
                 </div>
-                <a href="archive.html" class="nav-link">All Versions →</a>
+                <a href="index.html" class="nav-link">← Back to Latest</a>
             </div>
         </header>
 
         <div id="loading" class="loading">
             <div class="spinner"></div>
-            <p>Loading releases...</p>
+            <p>Loading all versions...</p>
         </div>
 
         <div id="error" class="error" style="display: none;">
             <p id="error-message"></p>
             <button onclick="loadReleases()">Retry</button>
-        </div>
-
-        <div id="active-builds-container" class="active-builds-container" style="display: none;">
-            <h2 class="section-title">🚀 Builds in Progress</h2>
-            <div id="active-builds-list"></div>
         </div>
 
         <div id="filters-container" class="filters-container" style="display: none;">
@@ -45,13 +40,12 @@
                         <option value="all">All Branches</option>
                     </select>
                 </div>
-
             </div>
         </div>
 
         <div id="releases-container" class="releases-container"></div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="archive-script.js"></script>
 </body>
 </html>
