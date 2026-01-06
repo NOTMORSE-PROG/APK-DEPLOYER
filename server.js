@@ -122,7 +122,10 @@ app.get('/api/builds/active', async (req, res) => {
     });
 
     const activeBuilds = response.data.workflow_runs
-      .filter(run => run.name === 'Build and Release APK')
+      .filter(run =>
+        run.name === 'Build and Release APK' ||
+        run.name.startsWith('APK Build from branch:')
+      )
       .map(run => ({
         id: run.id,
         branch: run.head_branch,
@@ -160,7 +163,10 @@ app.get('/api/builds/recent', async (req, res) => {
     });
 
     const recentBuilds = response.data.workflow_runs
-      .filter(run => run.name === 'Build and Release APK')
+      .filter(run =>
+        run.name === 'Build and Release APK' ||
+        run.name.startsWith('APK Build from branch:')
+      )
       .map(run => {
         const duration = run.updated_at && run.created_at
           ? Math.round((new Date(run.updated_at) - new Date(run.created_at)) / 1000)
