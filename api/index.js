@@ -110,15 +110,24 @@ app.get('/api/builds/active', async (req, res) => {
 
     const activeBuilds = response.data.workflow_runs
       .filter(run => run.name === 'Build and Release APK')
-      .map(run => ({
-        id: run.id,
-        branch: run.head_branch,
-        status: run.status,
-        startedAt: run.created_at,
-        commitMessage: run.display_title,
-        author: run.actor.login,
-        url: run.html_url
-      }));
+      .map(run => {
+        // Extract branch from display_title which has format "APK Build from branch: {branch_name}"
+        let branch = run.head_branch;
+        const branchMatch = run.display_title?.match(/APK Build from branch:\s*(.+)/);
+        if (branchMatch) {
+          branch = branchMatch[1].trim();
+        }
+
+        return {
+          id: run.id,
+          branch: branch,
+          status: run.status,
+          startedAt: run.created_at,
+          commitMessage: run.display_title,
+          author: run.actor.login,
+          url: run.html_url
+        };
+      });
 
     res.json({
       success: true,
@@ -153,9 +162,16 @@ app.get('/api/builds/recent', async (req, res) => {
           ? Math.round((new Date(run.updated_at) - new Date(run.created_at)) / 1000)
           : null;
 
+        // Extract branch from display_title which has format "APK Build from branch: {branch_name}"
+        let branch = run.head_branch;
+        const branchMatch = run.display_title?.match(/APK Build from branch:\s*(.+)/);
+        if (branchMatch) {
+          branch = branchMatch[1].trim();
+        }
+
         return {
           id: run.id,
-          branch: run.head_branch,
+          branch: branch,
           status: run.status,
           conclusion: run.conclusion,
           startedAt: run.created_at,

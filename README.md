@@ -1,23 +1,35 @@
-# APK Downloader
+# APK Deployer
 
-Simple website that auto-fetches and displays APK releases from GitHub with build progress tracking.
+Simple website that auto-fetches and displays APK releases from GitHub with build progress tracking and version archiving.
 
 ## What It Does
 
-- Shows all APK releases from your GitHub repo
+- Shows latest APK releases from your GitHub repo with download buttons
 - Displays live build progress with animated bars
+- Automatically archives older versions to a dedicated archive page
 - Auto-refreshes every 30 seconds
 - Works for any React Native/Expo project
+- Deploy to Vercel or run locally
 
-## Quick Start (Current Project: SafeTransit)
+## Quick Start
+
+### Local Development
 
 ```bash
-cd c:\SafeTransit\apk-downloader
 npm install
 npm start
 ```
 
 Open: **http://localhost:3000**
+
+### Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone)
+
+1. Push this repo to GitHub
+2. Import to Vercel
+3. Add environment variables (see Configuration below)
+4. Deploy
 
 ## How Builds Work
 
@@ -25,23 +37,39 @@ Open: **http://localhost:3000**
 
 ```bash
 git push origin main           # → Creates apk-main
-git push origin develop        # → Creates apk-develop + apk-dev-develop (dev build)
 git push origin any-branch     # → Creates apk-any-branch
 ```
 
 **Works with ANY branch name!**
 
-Website shows them all with download buttons.
+Each push creates a release tagged `apk-{branch-name}` with the compiled APK. The website automatically detects and displays all APK releases.
 
-## Workflows Already Set Up
+## Workflow Configuration
 
-**Production APKs:** `.github/workflows/build-apk.yml`
-- Optimized release builds
-- **Triggers on push to ANY branch**
+If using the included workflow (`.github/workflows/build-apk.yml`):
+- Triggers on push to ANY branch
+- Creates optimized production builds
+- Tags releases as `apk-{branch-name}`
 
 ## Configuration
 
-Edit `config.json` to point to your GitHub repo:
+### Option 1: Environment Variables (Recommended for Vercel)
+
+Copy `.env.example` to `.env` and configure:
+
+```env
+GITHUB_OWNER=your-github-username
+GITHUB_REPO=your-repo-name
+GITHUB_TOKEN=your-github-token
+APP_NAME=Your App Name
+APP_DESCRIPTION=Download APKs
+APP_TAG_PATTERN=apk-
+PORT=3000
+```
+
+### Option 2: Config File (Local Development)
+
+Edit `config.json`:
 
 ```json
 {
@@ -54,49 +82,51 @@ Edit `config.json` to point to your GitHub repo:
     "name": "Your App Name",
     "description": "Download APKs",
     "tagPattern": "apk-"
+  },
+  "server": {
+    "port": 3000
   }
 }
 ```
 
-**Optional:** Add GitHub token for higher API rate limits (5000/hour instead of 60/hour)
+**GitHub Token (Optional but Recommended):**
+- Higher API rate limits (5000/hour instead of 60/hour)
 - Create at: https://github.com/settings/tokens
-- Scope: `public_repo`
+- Required scope: `public_repo`
+
+## Features
+
+### Archive Page
+- Main page shows the latest version of each branch
+- Older versions automatically moved to archive page (`/archive.html`)
+- Easy access to all historical builds
+- Same download and progress tracking features
+
+### Android Download Support
+- Uses `target="_blank"` to fix Android download issues
+- Direct APK downloads work seamlessly on mobile devices
 
 ## Reuse for Another Project
 
-### Copy/Paste Workflow:
+**1. Fork or clone this repository**
 
-**1. Copy the folder**
+**2. Update configuration**
+- Edit `config.json` with your repo details
+- Or set environment variables for Vercel deployment
+
+**3. (Optional) Copy workflows to your project**
+If you need APK build workflows:
 ```bash
-xcopy /E /I c:\SafeTransit\apk-downloader c:\YourNewProject\apk-downloader
+cp -r .github /path/to/your-project/
 ```
 
-**2. Edit config.json**
-```json
-{
-  "github": {
-    "owner": "your-username",
-    "repo": "your-new-repo"
-  },
-  "app": {
-    "name": "Your New App"
-  }
-}
-```
-
-**3. Copy workflows to your new project**
+**4. Deploy or run locally**
 ```bash
-xcopy /E /I c:\SafeTransit\apk-downloader\.github c:\YourNewProject\.github
-```
-
-**4. Start the website**
-```bash
-cd c:\YourNewProject\apk-downloader
 npm install
 npm start
 ```
 
-**That's it!** Website now shows APKs from your new project.
+**That's it!** Point it at any GitHub repo with APK releases.
 
 ## GitHub Permissions Required
 
@@ -108,31 +138,31 @@ Enable:
 ## File Structure
 
 ```
-apk-downloader/
-├── server.js          # Backend API
-├── config.json        # Configuration
-├── package.json       # Dependencies
+apk-deployer/
+├── server.js              # Local development server
+├── api/
+│   └── index.js          # Vercel serverless API
 ├── public/
-│   ├── index.html     # Frontend
-│   ├── styles.css     # Styling
-│   └── script.js      # Build progress tracking
+│   ├── index.html        # Main page (latest releases)
+│   ├── archive.html      # Archive page (older versions)
+│   ├── script.js         # Main page JavaScript
+│   ├── archive-script.js # Archive page JavaScript
+│   └── styles.css        # Shared styling
+├── config.json           # Configuration file
+├── .env.example          # Environment variables template
+├── vercel.json           # Vercel deployment config
+├── package.json          # Dependencies
 └── .github/workflows/
-    ├── build-apk.yml      # Production builds
-    └── build-dev-apk.yml  # Development builds
+    └── build-apk.yml     # APK build workflow (optional)
 ```
 
-## Development vs Production Builds
+## Build Types
 
-**Production (Release APK):**
-- Tag: `apk-{branch}` (e.g., `apk-main`)
-- Optimized, smaller size
-- For testing/distribution
-
-**Development (Debug APK):**
-- Tag: `apk-dev-{branch}` (e.g., `apk-dev-develop`)
-- Hot reload, dev menu enabled
-- Connects to Metro bundler
-- Run `npm start` on your computer, app connects automatically
+The default workflow creates production (release) APKs:
+- Tag format: `apk-{branch}` (e.g., `apk-main`, `apk-develop`)
+- Optimized for distribution
+- Smaller file size
+- Ready for testing and deployment
 
 ## Troubleshooting
 
@@ -146,10 +176,18 @@ apk-downloader/
 - For Expo projects: Add `EXPO_TOKEN` secret (optional)
 
 **API rate limit?**
-- Add GitHub token to `config.json`
+- Add GitHub token to `config.json` or `.env` file
+- Get token at: https://github.com/settings/tokens
 
-## That's It
+## Summary
 
-- Website: Shows all APKs with progress tracking
-- Auto-builds: Push code → APK ready in ~5-7 minutes
-- Portable: Copy folder + edit config.json → works for any project
+- **Simple Setup:** Configure once, deploy anywhere (Vercel or local)
+- **Automatic Archiving:** Latest releases on main page, older versions in archive
+- **Live Progress:** Real-time build tracking with animated progress bars
+- **Mobile-Friendly:** Fixed download issues for Android devices
+- **Flexible:** Works with any GitHub repo that publishes APK releases
+- **Auto-builds:** Push code → APK ready in ~5-7 minutes (with GitHub Actions)
+
+## License
+
+MIT
